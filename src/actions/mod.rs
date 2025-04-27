@@ -2,8 +2,9 @@ use bevy::math::Vec3Swizzles;
 use bevy::prelude::*;
 
 use crate::actions::game_control::{get_movement, GameControl};
+use crate::overlay_state::GameOverlayState;
 use crate::player::Player;
-use crate::GameState;
+use crate::AppState;
 
 mod game_control;
 
@@ -17,7 +18,7 @@ impl Plugin for ActionsPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Actions>().add_systems(
             Update,
-            set_movement_actions.run_if(in_state(GameState::Playing)),
+            (set_movement_actions, handle_settings_action).run_if(in_state(AppState::InGame)),
         );
     }
 }
@@ -25,6 +26,30 @@ impl Plugin for ActionsPlugin {
 #[derive(Default, Resource)]
 pub struct Actions {
     pub player_movement: Option<Vec2>,
+    pub settings: bool,
+}
+
+fn handle_settings_action(
+    mut actions: ResMut<Actions>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut next_overlay_state: ResMut<NextState<GameOverlayState>>,
+    overlay_state: Res<State<GameOverlayState>>,
+) {
+    actions.settings = keyboard_input.just_pressed(KeyCode::Escape);
+
+    if actions.settings {
+        match overlay_state.get() {
+            GameOverlayState::None => {
+                next_overlay_state.set(GameOverlayState::GameMenu);
+            }
+            GameOverlayState::GameMenu => {
+                next_overlay_state.set(GameOverlayState::None);
+            }
+            GameOverlayState::SettingsMenu => {
+                next_overlay_state.set(GameOverlayState::GameMenu);
+            }
+        }
+    }
 }
 
 pub fn set_movement_actions(
